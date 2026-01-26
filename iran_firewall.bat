@@ -8,10 +8,14 @@ setlocal EnableDelayedExpansion
 ::  Standalone batch file - NO Python required!
 ::  Maximizes bandwidth for Iranian users during internet shutdowns.
 ::  
-::  USAGE: Right-click → Run as Administrator
+::  USAGE: 
+::    1. Run Psiphon Conduit FIRST
+::    2. Right-click this file → Run as Administrator
 ::  
 ::  This script ONLY affects conduit-tunnel-core.exe
 ::  Your PC, browsing, and other apps work normally.
+::
+::  Credits: Based on https://github.com/SamNet-dev/iran-conduit-firewall
 :: ═══════════════════════════════════════════════════════════════════════════
 
 set "VERSION=2.0.0"
@@ -23,16 +27,6 @@ set "TEMP_IPV4=%TEMP%\iran_ipv4.txt"
 set "TEMP_IPV6=%TEMP%\iran_ipv6.txt"
 set "CONDUIT_URL=https://conduit.psiphon.ca/"
 
-:: Colors
-set "RED=[91m"
-set "GREEN=[92m"
-set "YELLOW=[93m"
-set "BLUE=[94m"
-set "MAGENTA=[95m"
-set "CYAN=[96m"
-set "WHITE=[97m"
-set "RESET=[0m"
-
 :: ═══════════════════════════════════════════════════════════════════════════
 :: AUTO-ELEVATE TO ADMINISTRATOR
 :: ═══════════════════════════════════════════════════════════════════════════
@@ -43,10 +37,7 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-:: Change to script directory
 cd /d "%SCRIPT_DIR%"
-
-:: Initialize log
 echo [%date% %time%] === Iran Firewall v%VERSION% started === >> "%LOG_FILE%"
 
 goto :MAIN_MENU
@@ -57,25 +48,25 @@ goto :MAIN_MENU
 :MAIN_MENU
 cls
 echo.
-echo %CYAN%╔═══════════════════════════════════════════════════════════════════╗%RESET%
-echo %CYAN%║%WHITE%       IRAN-ONLY FIREWALL FOR PSIPHON CONDUIT v%VERSION%        %CYAN%║%RESET%
-echo %CYAN%╠═══════════════════════════════════════════════════════════════════╣%RESET%
-echo %CYAN%║%RESET%  Maximize bandwidth for Iranian users during internet shutdowns  %CYAN%║%RESET%
-echo %CYAN%║%RESET%  %GREEN%[STANDALONE - No Python Required]%RESET%                              %CYAN%║%RESET%
-echo %CYAN%╚═══════════════════════════════════════════════════════════════════╝%RESET%
+echo ========================================================================
+echo        IRAN-ONLY FIREWALL FOR PSIPHON CONDUIT v%VERSION%
+echo ========================================================================
+echo   Maximize bandwidth for Iranian users during internet shutdowns
+echo   [STANDALONE - No Python Required]
+echo ========================================================================
 echo.
-echo %WHITE%─────────────────────────────────────────────────────────────────────%RESET%
-echo   %GREEN%1.%RESET% Enable Iran-only mode %CYAN%(Normal)%RESET%
-echo   %YELLOW%2.%RESET% Enable Iran-only mode %MAGENTA%(Strict)%RESET%
-echo   %RED%3.%RESET% Disable Iran-only mode
-echo   %BLUE%4.%RESET% Check status
-echo   %CYAN%5.%RESET% Conduit management
-echo   %WHITE%6.%RESET% Help
-echo   %RED%0.%RESET% Exit
-echo %WHITE%─────────────────────────────────────────────────────────────────────%RESET%
-echo   %CYAN%Normal:%RESET% TCP global, UDP Iran-only
-echo   %MAGENTA%Strict:%RESET% TCP+UDP Iran-only (may affect visibility)
-echo %WHITE%─────────────────────────────────────────────────────────────────────%RESET%
+echo   1. [ENABLE]  Iran-only mode (Normal)
+echo   2. [ENABLE]  Iran-only mode (Strict)
+echo   3. [DISABLE] Iran-only mode
+echo   4. [STATUS]  Check current status
+echo   5. [CONDUIT] Conduit management
+echo   6. [HELP]    Help
+echo   0. [EXIT]    Exit
+echo.
+echo ------------------------------------------------------------------------
+echo   Normal: TCP global, UDP Iran-only (recommended)
+echo   Strict: TCP+UDP Iran-only (may affect broker visibility)
+echo ------------------------------------------------------------------------
 echo.
 set /p "CHOICE=  Enter choice (0-6): "
 
@@ -89,7 +80,7 @@ if "%CHOICE%"=="0" goto :EXIT
 goto :MAIN_MENU
 
 :: ═══════════════════════════════════════════════════════════════════════════
-:: ENABLE IRAN-ONLY MODE (NORMAL)
+:: ENABLE IRAN-ONLY MODE
 :: ═══════════════════════════════════════════════════════════════════════════
 :ENABLE_NORMAL
 set "STRICT_MODE=0"
@@ -97,8 +88,8 @@ goto :ENABLE_COMMON
 
 :ENABLE_STRICT
 echo.
-echo %YELLOW%  WARNING: Strict mode restricts TCP to Iran only.%RESET%
-echo %YELLOW%  This may prevent Psiphon brokers from seeing your node.%RESET%
+echo   WARNING: Strict mode restricts TCP to Iran only.
+echo   This may prevent Psiphon brokers from seeing your node.
 echo.
 set /p "CONFIRM=  Continue? (y/n): "
 if /i not "%CONFIRM%"=="y" goto :MAIN_MENU
@@ -108,72 +99,74 @@ goto :ENABLE_COMMON
 :ENABLE_COMMON
 cls
 echo.
-echo %CYAN%══════════════════════════════════════════════════════════════%RESET%
+echo ========================================================================
 if "%STRICT_MODE%"=="1" (
-    echo %MAGENTA%  ENABLING IRAN-ONLY MODE [STRICT]%RESET%
+    echo   ENABLING IRAN-ONLY MODE [STRICT]
 ) else (
-    echo %GREEN%  ENABLING IRAN-ONLY MODE [NORMAL]%RESET%
+    echo   ENABLING IRAN-ONLY MODE [NORMAL]
 )
-echo %CYAN%══════════════════════════════════════════════════════════════%RESET%
+echo ========================================================================
 echo.
 
 :: Step 1: Verify Firewall
-echo %YELLOW%[1/7] Verifying Windows Firewall...%RESET%
+echo [1/7] Verifying Windows Firewall...
 call :VERIFY_FIREWALL
 if %errorlevel% neq 0 (
-    echo %RED%  Cannot proceed without Windows Firewall enabled%RESET%
+    echo   ERROR: Cannot proceed without Windows Firewall enabled
     pause
     goto :MAIN_MENU
 )
 
 :: Step 2: Check Conduit Running
 echo.
-echo %YELLOW%[2/7] Checking Conduit status...%RESET%
+echo [2/7] Checking Conduit status...
 call :IS_CONDUIT_RUNNING
 if %errorlevel% equ 0 (
-    echo %GREEN%  Conduit is running%RESET%
+    echo   OK: Conduit is running
 ) else (
-    echo %WHITE%  Conduit is NOT running%RESET%
-    set /p "START_CONDUIT=  Start Conduit first? (y/n/0=back): "
-    if /i "!START_CONDUIT!"=="0" goto :MAIN_MENU
-    if /i "!START_CONDUIT!"=="y" call :START_CONDUIT
+    echo   INFO: Conduit is NOT running
+    echo.
+    echo   IMPORTANT: Please start Psiphon Conduit first!
+    echo   The script needs to detect Conduit from the running process.
+    echo.
+    set /p "WAIT_CONDUIT=  Start Conduit now, then press Enter (or 0 to go back): "
+    if "!WAIT_CONDUIT!"=="0" goto :MAIN_MENU
 )
 
 :: Step 3: Find Conduit
 echo.
-echo %YELLOW%[3/7] Locating Conduit executable...%RESET%
+echo [3/7] Locating Conduit executable...
 call :FIND_CONDUIT
 if not defined CONDUIT_PATH (
-    echo %RED%  Could not find Conduit. Please ensure it's installed.%RESET%
     pause
     goto :MAIN_MENU
 )
-echo %GREEN%  Found: %CONDUIT_PATH%%RESET%
+echo   Path: %CONDUIT_PATH%
 
 :: Step 4: Download IPs
 echo.
-echo %YELLOW%[4/7] Downloading Iran IP ranges...%RESET%
+echo [4/7] Downloading Iran IP ranges...
 call :DOWNLOAD_IPS
 if %errorlevel% neq 0 (
-    echo %RED%  Failed to download IP ranges%RESET%
+    echo   ERROR: Failed to download IP ranges
     pause
     goto :MAIN_MENU
 )
 
 :: Step 5: Remove old rules
 echo.
-echo %YELLOW%[5/7] Removing existing rules...%RESET%
+echo [5/7] Removing existing rules...
 call :REMOVE_ALL_RULES
-echo %GREEN%  Old rules removed%RESET%
+echo   OK: Old rules removed
 
 :: Step 6: Create new rules
 echo.
-echo %YELLOW%[6/7] Creating firewall rules...%RESET%
+echo [6/7] Creating firewall rules...
 call :CREATE_RULES
 
 :: Step 7: Verify
 echo.
-echo %YELLOW%[7/7] Verifying rules...%RESET%
+echo [7/7] Verifying rules...
 call :VERIFY_RULES
 
 :: Save config
@@ -181,12 +174,12 @@ echo %CONDUIT_PATH%> "%CONFIG_FILE%"
 echo [%date% %time%] Iran-only mode enabled. Strict=%STRICT_MODE% >> "%LOG_FILE%"
 
 echo.
-echo %GREEN%══════════════════════════════════════════════════════════════%RESET%
-echo %GREEN%  IRAN-ONLY MODE ENABLED!%RESET%
-echo %GREEN%══════════════════════════════════════════════════════════════%RESET%
+echo ========================================================================
+echo   SUCCESS! IRAN-ONLY MODE ENABLED
+echo ========================================================================
 echo.
-echo %WHITE%  Your PC is NOT affected - only Conduit!%RESET%
-echo %CYAN%  Only Iranian users can now use your data tunnel!%RESET%
+echo   * Your PC is NOT affected - only Conduit
+echo   * Only Iranian users can now use your data tunnel
 echo.
 pause
 goto :MAIN_MENU
@@ -197,25 +190,23 @@ goto :MAIN_MENU
 :DISABLE
 cls
 echo.
-echo %RED%  Disabling Iran-only mode...%RESET%
+echo   Disabling Iran-only mode...
 echo.
 
 call :REMOVE_ALL_RULES
 
-:: Restore default allow rule for Conduit
 if exist "%CONFIG_FILE%" (
     set /p CONDUIT_PATH=<"%CONFIG_FILE%"
     if defined CONDUIT_PATH (
         echo   Restoring default allow rule...
-        powershell -NoProfile -Command ^
-            "New-NetFirewallRule -DisplayName 'Psiphon Conduit (Restored)' -Description 'Restored by IranFirewall' -Direction Inbound -Action Allow -Enabled True -Program '!CONDUIT_PATH!' -ErrorAction SilentlyContinue" >nul 2>&1
+        powershell -NoProfile -Command "New-NetFirewallRule -DisplayName 'Psiphon Conduit (Restored)' -Description 'Restored by IranFirewall' -Direction Inbound -Action Allow -Enabled True -Program '!CONDUIT_PATH!' -ErrorAction SilentlyContinue" >nul 2>&1
     )
 )
 
 echo [%date% %time%] Iran-only mode disabled >> "%LOG_FILE%"
 echo.
-echo %GREEN%  Iran-only mode DISABLED%RESET%
-echo %WHITE%  Conduit now accepts connections from all countries.%RESET%
+echo   SUCCESS: Iran-only mode DISABLED
+echo   Conduit now accepts connections from all countries.
 echo.
 pause
 goto :MAIN_MENU
@@ -226,39 +217,33 @@ goto :MAIN_MENU
 :STATUS
 cls
 echo.
-echo %CYAN%══════════════════════════════════════════════════════════════%RESET%
-echo %CYAN%  CURRENT STATUS%RESET%
-echo %CYAN%══════════════════════════════════════════════════════════════%RESET%
+echo ========================================================================
+echo   CURRENT STATUS
+echo ========================================================================
 echo.
 
-:: Check firewall
-echo %WHITE%  Windows Firewall:%RESET%
-powershell -NoProfile -Command ^
-    "$profiles = Get-NetFirewallProfile -All; $allEnabled = $true; foreach ($p in $profiles) { if (-not $p.Enabled) { $allEnabled = $false } }; if ($allEnabled) { Write-Host '    ENABLED' -ForegroundColor Green } else { Write-Host '    WARNING: May be disabled' -ForegroundColor Yellow }"
+echo   [Windows Firewall]
+powershell -NoProfile -Command "$p = Get-NetFirewallProfile -All; $e = ($p | Where-Object {$_.Enabled}).Count; if($e -eq 3){'   Status: ENABLED (all profiles)'}else{'   Status: WARNING - Some profiles disabled'}"
 
-:: Check our rules
 echo.
-echo %WHITE%  Iran Firewall Rules:%RESET%
-powershell -NoProfile -Command ^
-    "$rules = Get-NetFirewallRule -DisplayName '%RULE_PREFIX%*' -ErrorAction SilentlyContinue; if ($rules) { $allow = ($rules | Where-Object { $_.Action -eq 'Allow' }).Count; $block = ($rules | Where-Object { $_.Action -eq 'Block' }).Count; Write-Host ('    IRAN-ONLY MODE ENABLED') -ForegroundColor Green; Write-Host ('    Total rules: ' + $rules.Count); Write-Host ('    Allow rules: ' + $allow); Write-Host ('    Block rules: ' + $block) } else { Write-Host '    IRAN-ONLY MODE DISABLED' -ForegroundColor Red }"
+echo   [Iran Firewall Rules]
+powershell -NoProfile -Command "$r = Get-NetFirewallRule -DisplayName '%RULE_PREFIX%*' -EA SilentlyContinue; if($r){'   Status: IRAN-ONLY MODE ENABLED'; '   Total rules: '+$r.Count; '   Allow: '+(($r|?{$_.Action-eq'Allow'}).Count); '   Block: '+(($r|?{$_.Action-eq'Block'}).Count)}else{'   Status: DISABLED (no rules)'}"
 
-:: Check Conduit
 echo.
-echo %WHITE%  Psiphon Conduit:%RESET%
+echo   [Psiphon Conduit]
 call :IS_CONDUIT_RUNNING
 if %errorlevel% equ 0 (
-    echo %GREEN%    Running%RESET%
+    echo    Status: Running
 ) else (
-    echo %WHITE%    Not running%RESET%
+    echo    Status: Not running
 )
 
-:: Show saved path
 echo.
-echo %WHITE%  Saved Conduit Path:%RESET%
+echo   [Saved Path]
 if exist "%CONFIG_FILE%" (
     type "%CONFIG_FILE%"
 ) else (
-    echo     Not configured
+    echo    Not configured
 )
 
 echo.
@@ -271,16 +256,16 @@ goto :MAIN_MENU
 :CONDUIT_MENU
 cls
 echo.
-echo %CYAN%─────────────────────────────────────────────────────────────────────%RESET%
-echo %CYAN%  CONDUIT MANAGEMENT%RESET%
-echo %CYAN%─────────────────────────────────────────────────────────────────────%RESET%
-echo   %GREEN%1.%RESET% Start Conduit
-echo   %RED%2.%RESET% Stop Conduit
-echo   %BLUE%3.%RESET% Check if running
-echo   %CYAN%4.%RESET% Open Conduit website
-echo   %WHITE%5.%RESET% Show Conduit path
-echo   %RED%0.%RESET% Back to main menu
-echo %CYAN%─────────────────────────────────────────────────────────────────────%RESET%
+echo ========================================================================
+echo   CONDUIT MANAGEMENT
+echo ========================================================================
+echo.
+echo   1. Start Conduit
+echo   2. Stop Conduit
+echo   3. Check if running
+echo   4. Open Conduit website
+echo   5. Show saved path
+echo   0. Back to main menu
 echo.
 set /p "CONDUIT_CHOICE=  Enter choice: "
 
@@ -293,35 +278,32 @@ if "%CONDUIT_CHOICE%"=="2" (
     echo   Stopping Conduit...
     taskkill /IM "conduit-tunnel-core.exe" /F >nul 2>&1
     timeout /t 1 >nul
-    echo %GREEN%  Conduit stopped%RESET%
+    echo   Done
     pause
     goto :CONDUIT_MENU
 )
 if "%CONDUIT_CHOICE%"=="3" (
     call :IS_CONDUIT_RUNNING
-    if %errorlevel% equ 0 (
-        echo %GREEN%  Conduit is RUNNING%RESET%
+    if !errorlevel! equ 0 (
+        echo   Conduit is RUNNING
     ) else (
-        echo %WHITE%  Conduit is NOT running%RESET%
+        echo   Conduit is NOT running
     )
     pause
     goto :CONDUIT_MENU
 )
 if "%CONDUIT_CHOICE%"=="4" (
-    echo   Opening %CONDUIT_URL%
     start "" "%CONDUIT_URL%"
     pause
     goto :CONDUIT_MENU
 )
 if "%CONDUIT_CHOICE%"=="5" (
-    echo.
     if exist "%CONFIG_FILE%" (
         echo   Saved path:
         type "%CONFIG_FILE%"
     ) else (
-        echo   Not configured yet
+        echo   Not configured
     )
-    echo.
     pause
     goto :CONDUIT_MENU
 )
@@ -334,38 +316,30 @@ goto :CONDUIT_MENU
 :HELP
 cls
 echo.
-echo %CYAN%╔═══════════════════════════════════════════════════════════════════╗%RESET%
-echo %CYAN%║                    HELP - Iran-Only Firewall v%VERSION%              ║%RESET%
-echo %CYAN%╚═══════════════════════════════════════════════════════════════════╝%RESET%
+echo ========================================================================
+echo   HELP - Iran-Only Firewall v%VERSION%
+echo ========================================================================
 echo.
-echo %WHITE%  WHAT THIS DOES:%RESET%
-echo   - Creates firewall rules that ONLY allow Iranian IPs to use your
-echo     Psiphon Conduit bandwidth for data transfer (UDP).
-echo   - Allows TCP globally so Psiphon brokers can see your node is active.
-echo   - Uses EXPLICIT block rules - doesn't rely on Windows defaults.
+echo   WHAT THIS DOES:
+echo   Creates firewall rules so only Iranian IPs can use your Psiphon
+echo   Conduit bandwidth. Uses explicit BLOCK rules for security.
 echo.
-echo %WHITE%  HOW IT WORKS (Rule Priority):%RESET%
-echo   1. ALLOW DNS servers (required for operation)
-echo   2. ALLOW TCP globally (for Psiphon broker checks)
-echo   3. ALLOW UDP from Iran IP ranges (IPv4 + IPv6)
-echo   4. BLOCK all other UDP (explicit rule)
+echo   HOW TO USE:
+echo   1. Start Psiphon Conduit FIRST (must be running)
+echo   2. Run this script as Administrator
+echo   3. Choose option 1 (Normal) or 2 (Strict)
 echo.
-echo %WHITE%  MODES:%RESET%
-echo   %GREEN%Normal Mode:%RESET% TCP global, UDP Iran-only
-echo     Best for: Most users (ensures broker visibility)
+echo   MODES:
+echo   Normal: TCP global, UDP Iran-only (recommended)
+echo   Strict: TCP+UDP Iran-only (maximum restriction)
 echo.
-echo   %MAGENTA%Strict Mode:%RESET% TCP Iran-only, UDP Iran-only
-echo     Best for: Maximum restriction (may affect broker visibility)
-echo.
-echo %WHITE%  REQUIREMENTS:%RESET%
+echo   REQUIREMENTS:
 echo   - Windows 10/11
+echo   - Psiphon Conduit running
 echo   - Run as Administrator
-echo   - Windows Firewall enabled
 echo.
-echo %WHITE%  TROUBLESHOOTING:%RESET%
-echo   - "Access denied" - Right-click, Run as Administrator
-echo   - "Conduit not found" - Make sure Conduit is running first
-echo   - Check %LOG_FILE% for logs
+echo   CREDITS:
+echo   Based on https://github.com/SamNet-dev/iran-conduit-firewall
 echo.
 pause
 goto :MAIN_MENU
@@ -376,8 +350,8 @@ goto :MAIN_MENU
 :EXIT
 cls
 echo.
-echo %GREEN%  Thank you for helping Iran!%RESET%
-echo %WHITE%  Share this tool to help more people.%RESET%
+echo   Thank you for helping Iran!
+echo   Share this tool to help more people.
 echo.
 echo [%date% %time%] === Iran Firewall exited === >> "%LOG_FILE%"
 timeout /t 2 >nul
@@ -388,17 +362,16 @@ exit /b 0
 :: ═══════════════════════════════════════════════════════════════════════════
 
 :VERIFY_FIREWALL
-powershell -NoProfile -Command ^
-    "$profiles = Get-NetFirewallProfile -All; $allEnabled = $true; foreach ($p in $profiles) { if (-not $p.Enabled) { $allEnabled = $false } }; if ($allEnabled) { exit 0 } else { exit 1 }"
+powershell -NoProfile -Command "$p = Get-NetFirewallProfile -All; if(($p|?{$_.Enabled}).Count -eq 3){exit 0}else{exit 1}"
 if %errorlevel% equ 0 (
-    echo %GREEN%  Windows Firewall is ENABLED%RESET%
+    echo   OK: Windows Firewall is ENABLED
     exit /b 0
 ) else (
-    echo %YELLOW%  WARNING: Windows Firewall may be disabled!%RESET%
-    set /p "ENABLE_FW=  Enable Windows Firewall now? (y/n): "
+    echo   WARNING: Windows Firewall may be disabled
+    set /p "ENABLE_FW=  Enable it now? (y/n): "
     if /i "!ENABLE_FW!"=="y" (
         powershell -NoProfile -Command "Set-NetFirewallProfile -All -Enabled True"
-        echo %GREEN%  Firewall enabled%RESET%
+        echo   OK: Firewall enabled
         exit /b 0
     )
     exit /b 1
@@ -411,20 +384,15 @@ exit /b %errorlevel%
 :START_CONDUIT
 echo   Starting Conduit...
 if exist "%CONFIG_FILE%" (
-    set /p CONDUIT_PATH=<"%CONFIG_FILE%"
-    if exist "!CONDUIT_PATH!" (
-        start "" "!CONDUIT_PATH!"
+    set /p CPATH=<"%CONFIG_FILE%"
+    if exist "!CPATH!" (
+        start "" "!CPATH!"
         timeout /t 2 >nul
-        call :IS_CONDUIT_RUNNING
-        if %errorlevel% equ 0 (
-            echo %GREEN%  Conduit started successfully!%RESET%
-        ) else (
-            echo %YELLOW%  Conduit may not have started. Check manually.%RESET%
-        )
+        echo   Started
         exit /b 0
     )
 )
-echo %RED%  Conduit path not found. Run Enable first to locate it.%RESET%
+echo   Path not saved. Please start Conduit manually.
 exit /b 1
 
 :FIND_CONDUIT
@@ -435,256 +403,170 @@ if exist "%CONFIG_FILE%" (
     set /p SAVED_PATH=<"%CONFIG_FILE%"
     if exist "!SAVED_PATH!" (
         set "CONDUIT_PATH=!SAVED_PATH!"
+        echo   OK: Using saved path
         exit /b 0
     )
 )
 
-:: Method 1: Check running process
-echo   Checking running processes...
-for /f "tokens=*" %%a in ('powershell -NoProfile -Command "(Get-Process -Name 'conduit-tunnel-core' -ErrorAction SilentlyContinue).Path"') do (
-    if exist "%%a" (
-        set "CONDUIT_PATH=%%a"
-        echo %GREEN%  Found from running process%RESET%
-        exit /b 0
-    )
-)
-
-:: Method 2: Check UWP apps
-echo   Checking Windows Store apps...
-for /f "tokens=*" %%a in ('powershell -NoProfile -Command "(Get-AppxPackage -Name '*Conduit*' -ErrorAction SilentlyContinue).InstallLocation"') do (
-    if exist "%%a\conduit-tunnel-core.exe" (
-        set "CONDUIT_PATH=%%a\conduit-tunnel-core.exe"
-        echo %GREEN%  Found UWP app%RESET%
-        exit /b 0
-    )
-)
-
-:: Method 3: Common locations
-echo   Checking common locations...
-for %%D in ("%LOCALAPPDATA%" "%APPDATA%" "%USERPROFILE%\Downloads" "%PROGRAMFILES%") do (
-    if exist "%%~D" (
-        for /f "tokens=*" %%F in ('dir /s /b "%%~D\conduit-tunnel-core.exe" 2^>nul') do (
-            set "CONDUIT_PATH=%%F"
-            echo %GREEN%  Found in %%~D%RESET%
-            exit /b 0
+:: WMIC method - get path from running process
+echo   Detecting from running process...
+for /f "usebackq skip=1 tokens=*" %%a in (`wmic process where "name='conduit-tunnel-core.exe'" get ExecutablePath 2^>nul`) do (
+    set "LINE=%%a"
+    if defined LINE (
+        set "LINE=!LINE: =!"
+        if not "!LINE!"=="" (
+            for /f "tokens=*" %%b in ("%%a") do (
+                if exist "%%b" (
+                    set "CONDUIT_PATH=%%b"
+                    echo   OK: Found from running process
+                    exit /b 0
+                )
+            )
         )
     )
 )
 
-:: Manual entry
-echo.
-echo %YELLOW%  Could not find Conduit automatically.%RESET%
-echo   TIP: Make sure Conduit is running, then try again.
-echo.
-echo   0. Back to main menu
-set /p "MANUAL_PATH=  Enter full path to conduit-tunnel-core.exe (or 0): "
-if "%MANUAL_PATH%"=="0" exit /b 1
-if exist "%MANUAL_PATH%" (
-    set "CONDUIT_PATH=%MANUAL_PATH%"
-    exit /b 0
+:: PowerShell backup
+echo   Trying PowerShell detection...
+for /f "tokens=*" %%a in ('powershell -NoProfile -Command "(Get-Process conduit-tunnel-core -EA SilentlyContinue).Path" 2^>nul') do (
+    if exist "%%a" (
+        set "CONDUIT_PATH=%%a"
+        echo   OK: Found via PowerShell
+        exit /b 0
+    )
 )
+
+:: AppxPackage for Windows Store
+echo   Checking Windows Store...
+for /f "tokens=*" %%a in ('powershell -NoProfile -Command "$p=Get-AppxPackage *Psiphon* -EA SilentlyContinue|Select -First 1;if($p){$p.InstallLocation+'\conduit-tunnel-core.exe'}" 2^>nul') do (
+    if exist "%%a" (
+        set "CONDUIT_PATH=%%a"
+        echo   OK: Found Windows Store app
+        exit /b 0
+    )
+)
+
+:: Direct WindowsApps search
+echo   Searching WindowsApps folder...
+for /f "tokens=*" %%a in ('powershell -NoProfile -Command "Get-ChildItem 'C:\Program Files\WindowsApps\ConduitPsiphon*\conduit-tunnel-core.exe' -EA SilentlyContinue|Select -First 1 -Exp FullName" 2^>nul') do (
+    if exist "%%a" (
+        set "CONDUIT_PATH=%%a"
+        echo   OK: Found in WindowsApps
+        exit /b 0
+    )
+)
+
+:: Not found
+echo.
+echo   ============================================================
+echo   ERROR: COULD NOT FIND PSIPHON CONDUIT
+echo   ============================================================
+echo.
+echo   Is Psiphon Conduit currently RUNNING?
+echo.
+echo   Please:
+echo     1. Open Psiphon Conduit app
+echo     2. Wait until status shows "Active"
+echo     3. Run this script again
+echo.
 exit /b 1
 
 :DOWNLOAD_IPS
-:: Clear temp files
 del "%TEMP_IPV4%" 2>nul
 del "%TEMP_IPV6%" 2>nul
 
-:: Download IPv4
 echo.
-echo   %WHITE%Downloading IPv4 ranges...%RESET%
+echo   Downloading IPv4 ranges...
+echo   - ipdeny.com...
+powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; try{(iwr 'https://www.ipdeny.com/ipblocks/data/countries/ir.zone' -UseBasicParsing -TimeoutSec 30).Content|Out-File '%TEMP_IPV4%' -Encoding ASCII;'     OK'}catch{'     Failed'}"
 
-:: Source 1: ipdeny.com
-echo   Fetching ipdeny.com...
-powershell -NoProfile -Command ^
-    "try { $ProgressPreference='SilentlyContinue'; (Invoke-WebRequest -Uri 'https://www.ipdeny.com/ipblocks/data/countries/ir.zone' -TimeoutSec 30 -UseBasicParsing).Content | Out-File -Encoding ASCII '%TEMP_IPV4%' -Append; Write-Host '    OK' -ForegroundColor Green } catch { Write-Host '    Failed' -ForegroundColor Yellow }"
+echo   - herrbischoff GitHub...
+powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; try{(iwr 'https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/master/ipv4/ir.cidr' -UseBasicParsing -TimeoutSec 30).Content|Add-Content '%TEMP_IPV4%' -Encoding ASCII;'     OK'}catch{'     Failed'}"
 
-:: Source 2: herrbischoff GitHub
-echo   Fetching herrbischoff/country-ip-blocks...
-powershell -NoProfile -Command ^
-    "try { $ProgressPreference='SilentlyContinue'; (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/master/ipv4/ir.cidr' -TimeoutSec 30 -UseBasicParsing).Content | Out-File -Encoding ASCII '%TEMP_IPV4%' -Append; Write-Host '    OK' -ForegroundColor Green } catch { Write-Host '    Failed' -ForegroundColor Yellow }"
-
-:: Check if we got IPv4
 if not exist "%TEMP_IPV4%" (
-    echo %RED%  All IPv4 downloads failed!%RESET%
+    echo   ERROR: All downloads failed
     exit /b 1
 )
 
-:: Count IPv4
 for /f %%a in ('type "%TEMP_IPV4%" ^| find /c "/"') do set "IPV4_COUNT=%%a"
 if "%IPV4_COUNT%"=="0" (
-    echo %RED%  No IPv4 ranges downloaded!%RESET%
+    echo   ERROR: No IP ranges downloaded
     exit /b 1
 )
-echo %GREEN%  IPv4: %IPV4_COUNT% ranges%RESET%
+echo   IPv4: %IPV4_COUNT% ranges
 
-:: Download IPv6
 echo.
-echo   %WHITE%Downloading IPv6 ranges...%RESET%
+echo   Downloading IPv6 ranges...
+echo   - ipdeny.com...
+powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; try{(iwr 'https://www.ipdeny.com/ipv6/ipaddresses/blocks/ir.zone' -UseBasicParsing -TimeoutSec 30).Content|Out-File '%TEMP_IPV6%' -Encoding ASCII;'     OK'}catch{'     Failed'}"
 
-:: Source 1: ipdeny.com IPv6
-echo   Fetching ipdeny.com IPv6...
-powershell -NoProfile -Command ^
-    "try { $ProgressPreference='SilentlyContinue'; (Invoke-WebRequest -Uri 'https://www.ipdeny.com/ipv6/ipaddresses/blocks/ir.zone' -TimeoutSec 30 -UseBasicParsing).Content | Out-File -Encoding ASCII '%TEMP_IPV6%' -Append; Write-Host '    OK' -ForegroundColor Green } catch { Write-Host '    Failed' -ForegroundColor Yellow }"
+echo   - herrbischoff GitHub...
+powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; try{(iwr 'https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/master/ipv6/ir.cidr' -UseBasicParsing -TimeoutSec 30).Content|Add-Content '%TEMP_IPV6%' -Encoding ASCII;'     OK'}catch{'     Failed'}"
 
-:: Source 2: herrbischoff IPv6
-echo   Fetching herrbischoff IPv6...
-powershell -NoProfile -Command ^
-    "try { $ProgressPreference='SilentlyContinue'; (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/master/ipv6/ir.cidr' -TimeoutSec 30 -UseBasicParsing).Content | Out-File -Encoding ASCII '%TEMP_IPV6%' -Append; Write-Host '    OK' -ForegroundColor Green } catch { Write-Host '    Failed' -ForegroundColor Yellow }"
-
-:: Count IPv6
 set "IPV6_COUNT=0"
 if exist "%TEMP_IPV6%" (
     for /f %%a in ('type "%TEMP_IPV6%" ^| find /c ":"') do set "IPV6_COUNT=%%a"
 )
-echo %GREEN%  IPv6: %IPV6_COUNT% ranges%RESET%
+echo   IPv6: %IPV6_COUNT% ranges
 
 echo.
-echo %GREEN%  Total: %IPV4_COUNT% IPv4 + %IPV6_COUNT% IPv6 ranges downloaded%RESET%
+echo   Total: %IPV4_COUNT% IPv4 + %IPV6_COUNT% IPv6
 exit /b 0
 
 :REMOVE_ALL_RULES
-powershell -NoProfile -Command ^
-    "Get-NetFirewallRule -DisplayName '%RULE_PREFIX%*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue"
+powershell -NoProfile -Command "Get-NetFirewallRule -DisplayName '%RULE_PREFIX%*' -EA SilentlyContinue|Remove-NetFirewallRule -EA SilentlyContinue"
 timeout /t 1 >nul
 exit /b 0
 
 :CREATE_RULES
-set "FAILED_RULES=0"
-
-:: ─────────────────────────────────────────────────────────────────
-:: DNS RULES
-:: ─────────────────────────────────────────────────────────────────
+:: DNS Rules
 echo.
-echo   %CYAN%Creating DNS rules...%RESET%
+echo   Creating DNS rules...
+powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-UDP' -Description 'DNS UDP' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -RemoteAddress '8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1,9.9.9.9,149.112.112.112,208.67.222.222,208.67.220.220,178.22.122.100,185.51.200.2' -EA SilentlyContinue" >nul 2>&1
+powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-TCP' -Description 'DNS TCP' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -RemoteAddress '8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1,9.9.9.9,149.112.112.112,208.67.222.222,208.67.220.220,178.22.122.100,185.51.200.2' -EA SilentlyContinue" >nul 2>&1
+powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-UDP-v6' -Description 'DNS UDP v6' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -RemoteAddress '2001:4860:4860::8888,2001:4860:4860::8844,2606:4700:4700::1111,2606:4700:4700::1001' -EA SilentlyContinue" >nul 2>&1
+powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-TCP-v6' -Description 'DNS TCP v6' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -RemoteAddress '2001:4860:4860::8888,2001:4860:4860::8844,2606:4700:4700::1111,2606:4700:4700::1001' -EA SilentlyContinue" >nul 2>&1
+echo   OK: DNS rules
 
-:: DNS IPv4
-powershell -NoProfile -Command ^
-    "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-UDP' -Description 'Allow DNS UDP - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -RemoteAddress '8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1,9.9.9.9,149.112.112.112,208.67.222.222,208.67.220.220,4.2.2.1,4.2.2.2,178.22.122.100,185.51.200.2,10.202.10.202,10.202.10.102' -ErrorAction SilentlyContinue" >nul 2>&1
-
-powershell -NoProfile -Command ^
-    "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-TCP' -Description 'Allow DNS TCP - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -RemoteAddress '8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1,9.9.9.9,149.112.112.112,208.67.222.222,208.67.220.220,4.2.2.1,4.2.2.2,178.22.122.100,185.51.200.2,10.202.10.202,10.202.10.102' -ErrorAction SilentlyContinue" >nul 2>&1
-
-:: DNS IPv6
-powershell -NoProfile -Command ^
-    "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-UDP-v6' -Description 'Allow DNS UDP IPv6 - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -RemoteAddress '2001:4860:4860::8888,2001:4860:4860::8844,2606:4700:4700::1111,2606:4700:4700::1001,2620:fe::fe,2620:fe::9' -ErrorAction SilentlyContinue" >nul 2>&1
-
-powershell -NoProfile -Command ^
-    "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-DNS-TCP-v6' -Description 'Allow DNS TCP IPv6 - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -RemoteAddress '2001:4860:4860::8888,2001:4860:4860::8844,2606:4700:4700::1111,2606:4700:4700::1001,2620:fe::fe,2620:fe::9' -ErrorAction SilentlyContinue" >nul 2>&1
-
-echo %GREEN%    DNS rules created%RESET%
-
-:: ─────────────────────────────────────────────────────────────────
-:: TCP RULES
-:: ─────────────────────────────────────────────────────────────────
+:: TCP Rules
 echo.
-echo   %CYAN%Creating TCP rules...%RESET%
-
+echo   Creating TCP rules...
 if "%STRICT_MODE%"=="0" (
-    :: Normal mode: TCP global
-    powershell -NoProfile -Command ^
-        "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-TCP-Global' -Description 'Allow Global TCP for Broker - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -ErrorAction SilentlyContinue" >nul 2>&1
-    echo %GREEN%    TCP: Global (for broker visibility)%RESET%
+    powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-TCP-Global' -Description 'Global TCP' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -EA SilentlyContinue" >nul 2>&1
+    echo   OK: TCP Global
 ) else (
-    echo %MAGENTA%    TCP: Will be restricted to Iran only (strict mode)%RESET%
+    echo   INFO: TCP will be Iran-only (strict)
 )
 
-:: ─────────────────────────────────────────────────────────────────
-:: IRAN IPv4 UDP RULES
-:: ─────────────────────────────────────────────────────────────────
+:: Iran IPv4 UDP
 echo.
-echo   %CYAN%Creating Iran IPv4 rules...%RESET%
+echo   Creating Iran IPv4 rules (please wait)...
+powershell -NoProfile -Command "$ips=Get-Content '%TEMP_IPV4%'|?{$_-match'/'  -and $_-notmatch':' -and $_-notmatch'#'}|Select -Unique;$bs=200;$t=$ips.Count;$n=0;for($i=0;$i-lt$t;$i+=$bs){$b=$ips[$i..([Math]::Min($i+$bs-1,$t-1))];$l=$b-join',';$pct=[Math]::Min(100,[int](($i+$bs)/$t*100));Write-Host \"`r   Progress: $pct%%\" -NoNewline;New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-UDP-v4-$n' -Description 'Iran IPv4 UDP' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $l -Protocol UDP -EA SilentlyContinue|Out-Null;if('%STRICT_MODE%'-eq'1'){New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-TCP-v4-$n' -Description 'Iran IPv4 TCP' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $l -Protocol TCP -EA SilentlyContinue|Out-Null};$n++};Write-Host '';Write-Host '   OK: IPv4 rules created'"
 
-:: Process IPv4 in batches using PowerShell
-powershell -NoProfile -Command ^
-    "$ips = Get-Content '%TEMP_IPV4%' | Where-Object { $_ -match '/' -and $_ -notmatch ':' -and $_ -notmatch '#' } | Select-Object -Unique; ^
-    $batchSize = 200; ^
-    $total = $ips.Count; ^
-    $batchNum = 0; ^
-    for ($i = 0; $i -lt $total; $i += $batchSize) { ^
-        $batch = $ips[$i..([Math]::Min($i + $batchSize - 1, $total - 1))]; ^
-        $ipList = $batch -join ','; ^
-        $pct = [Math]::Min(100, [int](($i + $batchSize) / $total * 100)); ^
-        Write-Host \"`r    Progress: $pct%% ($([Math]::Min($i + $batchSize, $total))/$total)\" -NoNewline; ^
-        New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-UDP-v4-$batchNum' -Description 'Allow Iran IPv4 UDP - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $ipList -Protocol UDP -ErrorAction SilentlyContinue | Out-Null; ^
-        if ('%STRICT_MODE%' -eq '1') { ^
-            New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-TCP-v4-$batchNum' -Description 'Allow Iran IPv4 TCP - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $ipList -Protocol TCP -ErrorAction SilentlyContinue | Out-Null; ^
-        } ^
-        $batchNum++; ^
-    }; ^
-    Write-Host ''; ^
-    Write-Host '    IPv4 rules created' -ForegroundColor Green"
-
-:: ─────────────────────────────────────────────────────────────────
-:: IRAN IPv6 UDP RULES
-:: ─────────────────────────────────────────────────────────────────
+:: Iran IPv6 UDP
 if exist "%TEMP_IPV6%" (
     echo.
-    echo   %CYAN%Creating Iran IPv6 rules...%RESET%
-    
-    powershell -NoProfile -Command ^
-        "$ips = Get-Content '%TEMP_IPV6%' | Where-Object { $_ -match ':' -and $_ -match '/' -and $_ -notmatch '#' } | Select-Object -Unique; ^
-        if ($ips.Count -gt 0) { ^
-            $batchSize = 200; ^
-            $total = $ips.Count; ^
-            $batchNum = 0; ^
-            for ($i = 0; $i -lt $total; $i += $batchSize) { ^
-                $batch = $ips[$i..([Math]::Min($i + $batchSize - 1, $total - 1))]; ^
-                $ipList = $batch -join ','; ^
-                $pct = [Math]::Min(100, [int](($i + $batchSize) / $total * 100)); ^
-                Write-Host \"`r    Progress: $pct%% ($([Math]::Min($i + $batchSize, $total))/$total)\" -NoNewline; ^
-                New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-UDP-v6-$batchNum' -Description 'Allow Iran IPv6 UDP - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $ipList -Protocol UDP -ErrorAction SilentlyContinue | Out-Null; ^
-                if ('%STRICT_MODE%' -eq '1') { ^
-                    New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-TCP-v6-$batchNum' -Description 'Allow Iran IPv6 TCP - IranFirewall v%VERSION%' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $ipList -Protocol TCP -ErrorAction SilentlyContinue | Out-Null; ^
-                } ^
-                $batchNum++; ^
-            }; ^
-            Write-Host ''; ^
-            Write-Host '    IPv6 rules created' -ForegroundColor Green ^
-        } else { ^
-            Write-Host '    No IPv6 ranges to process' -ForegroundColor Yellow ^
-        }"
-) else (
-    echo   %YELLOW%No IPv6 ranges available, skipping...%RESET%
+    echo   Creating Iran IPv6 rules...
+    powershell -NoProfile -Command "$ips=Get-Content '%TEMP_IPV6%'|?{$_-match':'  -and $_-match'/' -and $_-notmatch'#'}|Select -Unique;if($ips.Count-gt 0){$bs=200;$t=$ips.Count;$n=0;for($i=0;$i-lt$t;$i+=$bs){$b=$ips[$i..([Math]::Min($i+$bs-1,$t-1))];$l=$b-join',';New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-UDP-v6-$n' -Description 'Iran IPv6 UDP' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $l -Protocol UDP -EA SilentlyContinue|Out-Null;if('%STRICT_MODE%'-eq'1'){New-NetFirewallRule -DisplayName '%RULE_PREFIX%-Iran-TCP-v6-$n' -Description 'Iran IPv6 TCP' -Direction Inbound -Action Allow -Enabled True -Program '%CONDUIT_PATH%' -RemoteAddress $l -Protocol TCP -EA SilentlyContinue|Out-Null};$n++};Write-Host '   OK: IPv6 rules created'}else{Write-Host '   No IPv6 ranges'}"
 )
 
-:: ─────────────────────────────────────────────────────────────────
-:: EXPLICIT BLOCK RULES (CRITICAL!)
-:: ─────────────────────────────────────────────────────────────────
+:: BLOCK Rules
 echo.
-echo   %RED%Creating BLOCK rules (security)...%RESET%
+echo   Creating BLOCK rules...
+powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-UDP-All' -Description 'Block non-Iran UDP' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -EA SilentlyContinue" >nul 2>&1
+echo   OK: UDP block
+powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-UDP-v6-All' -Description 'Block non-Iran IPv6 UDP' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -EA SilentlyContinue" >nul 2>&1
+echo   OK: IPv6 UDP block
 
-:: Block all UDP not matched by allow rules
-powershell -NoProfile -Command ^
-    "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-UDP-All' -Description 'Block all non-Iran UDP - IranFirewall v%VERSION%' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -ErrorAction SilentlyContinue" >nul 2>&1
-echo %GREEN%    UDP block rule created%RESET%
-
-:: Block IPv6 UDP
-powershell -NoProfile -Command ^
-    "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-UDP-v6-All' -Description 'Block all non-Iran IPv6 UDP - IranFirewall v%VERSION%' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol UDP -ErrorAction SilentlyContinue" >nul 2>&1
-echo %GREEN%    IPv6 UDP block rule created%RESET%
-
-:: In strict mode, also block TCP
 if "%STRICT_MODE%"=="1" (
-    powershell -NoProfile -Command ^
-        "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-TCP-All' -Description 'Block all non-Iran TCP - IranFirewall v%VERSION%' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -ErrorAction SilentlyContinue" >nul 2>&1
-    echo %GREEN%    TCP block rule created (strict mode)%RESET%
-    
-    powershell -NoProfile -Command ^
-        "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-TCP-v6-All' -Description 'Block all non-Iran IPv6 TCP - IranFirewall v%VERSION%' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -ErrorAction SilentlyContinue" >nul 2>&1
-    echo %GREEN%    IPv6 TCP block rule created (strict mode)%RESET%
+    powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-TCP-All' -Description 'Block non-Iran TCP' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -EA SilentlyContinue" >nul 2>&1
+    echo   OK: TCP block (strict)
+    powershell -NoProfile -Command "New-NetFirewallRule -DisplayName '%RULE_PREFIX%-BLOCK-TCP-v6-All' -Description 'Block non-Iran IPv6 TCP' -Direction Inbound -Action Block -Enabled True -Program '%CONDUIT_PATH%' -Protocol TCP -EA SilentlyContinue" >nul 2>&1
+    echo   OK: IPv6 TCP block (strict)
 )
 
 exit /b 0
 
 :VERIFY_RULES
-powershell -NoProfile -Command ^
-    "$rules = Get-NetFirewallRule -DisplayName '%RULE_PREFIX%*' -ErrorAction SilentlyContinue; ^
-    $total = $rules.Count; ^
-    $allow = ($rules | Where-Object { $_.Action -eq 'Allow' }).Count; ^
-    $block = ($rules | Where-Object { $_.Action -eq 'Block' }).Count; ^
-    Write-Host ('  Total rules created: ' + $total) -ForegroundColor Green; ^
-    Write-Host ('  Allow rules: ' + $allow); ^
-    Write-Host ('  Block rules: ' + $block); ^
-    if ($block -gt 0) { Write-Host '  Explicit block rules in place' -ForegroundColor Green } else { Write-Host '  WARNING: No block rules!' -ForegroundColor Red }"
+powershell -NoProfile -Command "$r=Get-NetFirewallRule -DisplayName '%RULE_PREFIX%*' -EA SilentlyContinue;$t=$r.Count;$a=($r|?{$_.Action-eq'Allow'}).Count;$b=($r|?{$_.Action-eq'Block'}).Count;'   Total: '+$t;'   Allow: '+$a;'   Block: '+$b;if($b-gt 0){'   OK: Block rules in place'}else{'   WARNING: No block rules'}"
 exit /b 0
