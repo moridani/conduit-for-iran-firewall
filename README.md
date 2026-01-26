@@ -11,7 +11,7 @@ When you run Psiphon Conduit, people from ANY country can connect. This tool res
 
 ## ⚡ Quick Start
 
-1. **[Download iran_firewall.bat](https://github.com/user/repo/releases/latest)**
+1. **[Download iran_firewall.bat](https://github.com/moridani/conduit-for-iran-firewall/blob/main/iran_firewall.bat)**
 2. **Right-click → Run as Administrator**
 3. **Press 1** to enable Iran-only mode
 4. **Done!** ✅
